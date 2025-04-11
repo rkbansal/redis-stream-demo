@@ -1,0 +1,167 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Processing Service</h1>
+    
+    <form id="uploadForm">
+        <div class="form-group">
+            <label for="image">Select Image:</label>
+            <input type="file" id="image" name="image" accept="image/*" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="operation">Operation:</label>
+            <select id="operation" name="operation">
+                <option value="resize">Resize</option>
+                <option value="grayscale">Convert to Grayscale</option>
+                <option value="blur">Apply Blur</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="width">Width (px):</label>
+            <input type="number" id="width" name="width" placeholder="800">
+        </div>
+        
+        <div class="form-group">
+            <label for="height">Height (px):</label>
+            <input type="number" id="height" name="height" placeholder="600">
+        </div>
+        
+        <button type="submit">Process Image</button>
+    </form>
+    
+    <div id="status"></div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('image');
+            const operation = document.getElementById('operation').value;
+            const width = document.getElementById('width').value;
+            const height = document.getElementById('height').value;
+            
+            if (!fileInput.files[0]) {
+                alert('Please select an image');
+                return;
+            }
+            
+            formData.append('image', fileInput.files[0]);
+            formData.append('operation', operation);
+            
+            if (width) formData.append('width', width);
+            if (height) formData.append('height', height);
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<div class="spinner"></div> Processing your image...';
+            statusDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch('/process-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const jobId = data.jobId;
+                    checkJobStatus(jobId);
+                } else {
+                    statusDiv.textContent = `Error: ${data.error || 'Unknown error occurred'}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        async function checkJobStatus(jobId) {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                const response = await fetch(`/job-status/${jobId}`);
+                const data = await response.json();
+                
+                if (response.status === 200) {
+                    // Job completed
+                    if (data.status === 'completed') {
+                        statusDiv.innerHTML = `
+                            <h3>Processing Complete!</h3>
+                            <p>Operation: ${data.operation}</p>
+                            <p><a href="${data.processedImageUrl}" target="_blank">View Processed Image</a></p>
+                        `;
+                    } else {
+                        statusDiv.textContent = `Job failed: ${data.error || 'Unknown error'}`;
+                    }
+                } else if (response.status === 202) {
+                    // Still pending
+                    statusDiv.innerHTML = '<div class="spinner"></div> Processing your image...';
+                    // Check again after 2 seconds
+                    setTimeout(() => checkJobStatus(jobId), 2000);
+                } else {
+                    statusDiv.textContent = `Error: ${data.error || 'Unknown error occurred'}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

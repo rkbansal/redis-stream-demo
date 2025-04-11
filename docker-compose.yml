@@ -1,0 +1,43 @@
+version: "3"
+
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  node-service:
+    build:
+      context: ./node-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./node-service:/app
+      - /app/node_modules
+      - shared-uploads:/app/uploads
+
+  python-worker:
+    build:
+      context: ./python-worker
+      dockerfile: Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./python-worker:/app
+      - shared-uploads:/app/uploads:ro
+      - ./processed:/app/processed
+
+volumes:
+  redis-data:
+  shared-uploads:
