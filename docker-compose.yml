@@ -23,6 +23,7 @@ services:
       - ./node-service:/app
       - /app/node_modules
       - shared-uploads:/app/uploads
+      - ./processed:/app/processed
 
   python-worker:
     build:

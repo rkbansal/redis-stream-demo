@@ -50,6 +50,7 @@ const upload = multer({
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/processed', express.static(path.join(__dirname, 'processed')));
 
 // Routes
 app.post('/process-image', upload.single('image'), async (req, res) => {

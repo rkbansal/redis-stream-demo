@@ -93,7 +93,6 @@ def process_image(job_data):
         processed_img.save(output_path)
         
         # Create a URL to access the processed image
-        # In a real app, this would be a proper URL
         processed_image_url = f"/processed/{output_filename}"
         
         # Store the result in Redis
